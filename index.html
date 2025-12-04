@@ -1,0 +1,241 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Birthday Wish</title>
+  <style>
+    :root{--bg1:#ffefef;--bg2:#fff8e7;--accent:#ff4f9a}
+    html,body{height:100%;margin:0;font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial}
+    body{
+      background: linear-gradient(135deg,var(--bg1),var(--bg2));
+      display:flex;align-items:center;justify-content:center;overflow:hidden;
+    }
+    .wrap{width:100%;max-width:1000px;margin:auto;padding:20px;box-sizing:border-box}
+    .center{display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center}
+    .start-screen{height:80vh;display:flex;align-items:center;justify-content:center}
+    .start-btn{
+      background:var(--accent);color:white;border:none;padding:16px 28px;border-radius:12px;
+      font-size:1.25rem;cursor:pointer;box-shadow:0 6px 18px rgba(0,0,0,.12);transition:transform .15s
+    }
+    .start-btn:active{transform:scale(.98)}
+    /* container for any slideshow (text or images) */
+    .slideshow-container{width:100%;max-width:640px;height:320px;position:relative;margin-top:18px}
+    .slide{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;padding:12px;box-sizing:border-box}
+    .slide img{width:100%;height:100%;object-fit:cover;border-radius:12px;box-shadow:0 12px 30px rgba(0,0,0,.12)}
+    /* message styles */
+    .message{
+      font-weight:700;font-size:2rem;color:#111;padding:18px;border-radius:10px;
+      background:rgba(255,255,255,.85);box-shadow:0 10px 30px rgba(0,0,0,.08);max-width:100%;
+    }
+    .message.typing{font-family:monospace}
+    /* CSS animations for different message types (typing, fade, zoom, bounce) */
+    .typing::after{content:'';display:inline-block;width:12px;height:18px;background:#111;margin-left:6px;vertical-align:middle;animation:blink 1s steps(2) infinite}
+    @keyframes blink{50%{opacity:0}}
+    .fade{animation:fadeInMsg .9s ease both}
+    @keyframes fadeInMsg{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+    .zoom{animation:zoomIn .9s cubic-bezier(.2,.9,.3,1) both}
+    @keyframes zoomIn{from{opacity:0;transform:scale(.92)}to{opacity:1;transform:scale(1)}}
+    .bounce{animation:bounceIn .8s cubic-bezier(.2,.8,.3,1) both}
+    @keyframes bounceIn{from{opacity:0;transform:translateY(-16px) scale(.96)}50%{transform:translateY(6px) scale(1.02)}to{opacity:1;transform:none}}
+    /* beat class applied by JS on music beats */
+    .beat{animation:beatPulse .25s ease; /* short pulse */ transform-origin:center}
+    @keyframes beatPulse{0%{transform:scale(1)}50%{transform:scale(1.08)}100%{transform:scale(1)}}
+    /* responsive adjustments */
+    @media (max-width:600px){ .slideshow-container{height:220px} .message{font-size:1.2rem;padding:12px} }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <!-- START SCREEN -->
+    <div id="startScreen" class="start-screen center">
+      <button id="startBtn" class="start-btn">Start Surprise 🎉</button>
+    </div>
+
+    <!-- MAIN CONTENT (hidden until Start) -->
+    <div id="contentScreen" class="center" style="display:none">
+      <!-- TEXT SLIDESHOW (messages) -->
+      <div id="textSlideshow1" class="slideshow-container" aria-live="polite">
+        <div class="slide"><div class="message typing" data-type="typing">🎉 Happy Birthday! 🎉</div></div>
+        <div class="slide"><div class="message fade" data-type="fade">Wishing you joy, love & success!</div></div>
+        <div class="slide"><div class="message zoom" data-type="zoom">Enjoy your special day! 🥳</div></div>
+        <div class="slide"><div class="message zoom" data-type="zoom">You deserve all the love and happiness in the world. Happy Birthday!</div></div>
+        <div class="slide"><div class="message zoom" data-type="zoom">On your special day, I wish you peace, love, and all the good things life can offer.</div></div>
+        <div class="slide"><div class="message bounce" style="background:#ffe4f2" data-type="bounce">May your year be full of happiness! 💖</div></div>
+      </div>
+
+      <!-- IMAGE SLIDESHOW 1 -->
+      <div id="slideshow1" class="slideshow-container" style="display:none">
+        <div class="slide"><img src="chadni 1.jpg" alt="chadni 1.jpg"></div>
+        <div class="slide"><img src="chadni 2.jpg" alt="chadni 2.jpg"></div>
+        <div class="slide"><img src="chadni 3.jpg" alt="chadni 3.jpg"></div>
+        <div class="slide"><img src="chadni 4.jpg" alt="chadni 4.jpg"></div>
+        <div class="slide"><img src="chadni 5.jpg" alt="chadni 5.jpg"></div>
+        <div class="slide"><img src="chadni 6.jpg" alt="chadni 6.jpg"></div>
+      </div>
+
+      <!-- SECOND MESSAGE (will also be beat-synced) -->
+      <div id="msg2" style="margin-top:18px;display:none">
+        <div id="msg2Inner" class="message">💖 You're special, and today is all about celebrating YOU! 💖</div>
+      </div>
+
+      <!-- IMAGE SLIDESHOW 2 -->
+      <!-- <div id="slideshow2" class="slideshow-container" style="display:none;margin-top:18px">
+        <div class="slide"><img src="chadni 4.jpg" alt="chadni 4.jpg"></div>
+        <div class="slide"><img src="chadni 5.jpg" alt="chadni 5.jpg"></div>
+        <div class="slide"><img src="chadni 6.jpg" alt="chadni 6.jpg"></div>
+      </div>
+    </div>
+  </div> -->
+
+  <!-- Background music (local file) -->
+  <audio id="bgMusic" preload="auto" src="music.mp3"></audio>
+
+  <script>
+    // ---------- Utility: slideshow controller ----------
+    function createSlideshow(containerId, intervalMs = 2500) {
+      const container = document.getElementById(containerId);
+      const slides = container ? Array.from(container.querySelectorAll('.slide')) : [];
+      let idx = 0;
+      let timer = null;
+      function show() {
+        slides.forEach(s => s.style.display = 'none');
+        if (slides.length === 0) return;
+        slides[idx].style.display = 'flex';
+        idx = (idx + 1) % slides.length;
+      }
+      return {
+        start() { show(); timer = setInterval(show, intervalMs); },
+        stop(){ if(timer) clearInterval(timer); },
+        showOnce(){ show(); }
+      };
+    }
+
+    // ---------- Simple beat detector using WebAudio Analyser ----------
+    // It uses the instant energy vs moving average; it's a heuristic but works for songs with clear beats.
+    async function createBeatDetector(audioElement, options = {}) {
+      const {sensitivity = 1.3, smoothing = 0.9, fftSize = 2048} = options;
+      const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+      if (!AudioContextClass) return null;
+
+      const ctx = new AudioContextClass();
+      const source = ctx.createMediaElementSource(audioElement);
+      const analyser = ctx.createAnalyser();
+      analyser.fftSize = fftSize;
+      analyser.smoothingTimeConstant = 0.8;
+      source.connect(analyser);
+      analyser.connect(ctx.destination);
+
+      const bufferLength = analyser.frequencyBinCount;
+      const freqData = new Uint8Array(bufferLength);
+      let movingAverage = 0;
+      const alpha = 0.95; // smoothing factor for moving average
+
+      // Return function that accepts a callback to be called when a beat is detected
+      function start(callback) {
+        let lastBeatTime = 0;
+        const minGap = 150; // ms minimum gap between beats
+        function tick() {
+          analyser.getByteFrequencyData(freqData);
+          // Compute instant energy as sum of low-mid frequencies (usually where drum energy is)
+          // Use first N bins (low frequencies)
+          let instantEnergy = 0;
+          const binsToSum = Math.max(6, Math.floor(bufferLength * 0.12)); // ~low 12% bins
+          for (let i = 0; i < binsToSum; i++) instantEnergy += freqData[i];
+
+          // update moving average
+          movingAverage = alpha * movingAverage + (1 - alpha) * instantEnergy;
+
+          // detect beat: instantEnergy significantly above moving average
+          if (instantEnergy > sensitivity * Math.max(1, movingAverage)) {
+            const now = performance.now();
+            if (now - lastBeatTime > minGap) {
+              lastBeatTime = now;
+              callback(now);
+            }
+          }
+          // schedule next
+          requestAnimationFrame(tick);
+        }
+        requestAnimationFrame(tick);
+      }
+
+      async function resumeContextIfNeeded() {
+        if (ctx.state === 'suspended') {
+          try { await ctx.resume(); } catch(e){}
+        }
+      }
+
+      return { start, resumeContextIfNeeded, ctx };
+    }
+
+    // ---------- wiring everything up ----------
+    document.getElementById('startBtn').addEventListener('click', async () => {
+      const startScreen = document.getElementById('startScreen');
+      const content = document.getElementById('contentScreen');
+      startScreen.style.display = 'none';
+      content.style.display = 'flex';
+
+      const audio = document.getElementById('bgMusic');
+      // attempt to play audio (user gesture helps)
+      try {
+        await audio.play();
+      } catch (err) {
+        console.warn('autoplay prevented', err);
+      }
+
+      // Create slideshows
+      const textShow = createSlideshow('textSlideshow1', 2600); // text slides
+      const picShow1 = createSlideshow('slideshow1', 2200);
+      const picShow2 = createSlideshow('slideshow2', 2200);
+
+      // start text slideshow immediately
+      textShow.start();
+
+      // show first image slideshow after text finishes one loop (approx)
+      // We keep it simple: start picture slideshow after 1 full cycle of text slides
+      setTimeout(() => {
+        document.getElementById('slideshow1').style.display = 'block';
+        picShow1.start();
+      }, 2600 * 1.1); // small buffer
+
+      // show second message later
+      setTimeout(() => {
+        document.getElementById('msg2').style.display = 'block';
+      }, 2600 * 3 + 800);
+
+      // then start second picture slideshow
+      setTimeout(() => {
+        document.getElementById('slideshow2').style.display = 'block';
+        picShow2.start();
+      }, 2600 * 3 + 2000);
+
+      // setup beat detector and sync animations
+      const detector = await createBeatDetector(audio, { sensitivity: 1.25 });
+      if (detector) {
+        // resume audio context if needed (some browsers require user gesture)
+        await detector.resumeContextIfNeeded();
+        // Elements to apply beat class to (messages + msg2)
+        const beatTargets = Array.from(document.querySelectorAll('#textSlideshow1 .message'))
+          .concat([document.getElementById('msg2Inner')].filter(Boolean));
+
+        // On beat, toggle .beat class on the current visible message(s)
+        detector.start((t) => {
+          // Add beat to all currently visible message elements
+          beatTargets.forEach(el => {
+            // only pulse visible ones
+            if (el && el.offsetParent !== null) {
+              el.classList.remove('beat');
+              // Force reflow to restart animation
+              void el.offsetWidth;
+              el.classList.add('beat');
+            }
+          });
+        });
+      } else {
+        console.warn('Beat detector not available on this browser.');
+      }
+    });
+  </script>
+</body>
+</html>
